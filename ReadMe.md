@@ -1,3 +1,9 @@
+# Graphics Term Project
+
+## 3D Mandelbulb Visualizer
+
+Using ray marching, a volume rendering technique similar to raytracing, draw a 3D fractal onto the screen.  The program will be able to orbit the volume with a camera and change the color and power (complexity levels) of the fractal. The fractal drawn will be a mandelbulb and it will be drawn by taking advantage of modern graphics hardware.  Finally, the program will utilize Unity3D, a popular game engine, to handle the compilation of compute shaders to different platforms and provide some low-level matrix transformations of the camera. Instructions on using the project files will be provided.
+
 ### Installation Instructions:
 
 Install Unity Hub, if not installed.  (This helps to manage version number and install/edit the features installed in the application).
@@ -14,15 +20,26 @@ On the projects tab in Unity Hub, go to add, then navigate to the project folder
 
 ### Project Instructions:
 
-On opening the project there are really only two scripts that will control the rendering of the fractal.  There is a script on the camera object, CameraCompute.cs, that calls the compute shader, Raymarcher.compute, and the compute shader itself. Other scripts may be added to allow for user control of the parameters passed to the compute shader.
+On opening the project there are really only two scripts that will control the rendering of the fractal.  There is a script on the camera object, CameraCompute.cs, that passes variables into and dispatches the compute shader, Raymarcher.compute. Other scripts may be added to allow for user control of the parameters passed to the compute shader.
 
-### Other Sources:
+### Other Reference Materials:
 
-For a tutorial on how this was setup (and just a cool tutorial) see:
+Additional links:
+
+The Unity game engine:
+https://unity.com
+
+An explanation and introduction to ray marching:
+http://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/ 
+
+Mandelbulb:
+https://en.wikipedia.org/wiki/Mandelbulb
+
+Ray tracing implemented on the gpu in Unity (similar technique to ray marching)
 http://blog.three-eyed-games.com/2018/05/03/gpu-ray-tracing-in-unity-part-1/
-
-This tutorial is great as it shows how to pass variables to a compute shader.
-
 
 For an overview of Unity and the interface see:
 https://learn.unity.com
+
+For UNity's documentation on compute shaders see:
+https://docs.unity3d.com/Manual/class-ComputeShader.html

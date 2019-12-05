@@ -4,16 +4,97 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> Result;
+uint ResultWidth;
+uint ResultHeight;
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+
+
+struct Ray
+{
+    float3 origin;
+    float3 direction;
+};
+
+Ray CreateRay(float3 origin, float3 direction){
+    Ray ray;
+    ray.origin = origin;
+    ray.direction = direction;
+    return ray;
+}
+
+Ray CreateCameraRay(float2 uv){
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+    float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+    return CreateRay(origin, direction);
+}
+
+struct Sphere
+{
+    float3 origin;
+    float radius;
+};
+
+Sphere CreateSphere(float3 origin, float radius){
+    Sphere sphere;
+    sphere.origin = origin;
+    sphere.radius = radius;
+    return sphere;
+}
+
+float DistanceToSphere(Ray ray, Sphere sphere) {
+    return length(ray.origin - sphere.origin) - sphere.radius;
+}
+
+float DistanceToScene(Ray ray){
+    Sphere s = CreateSphere(float3(0.5f, 0.5f, 0.5f), 0.5f);
+    // Sphere a = CreateSphere(float3(1.0f, 0.0f, 0.0f), 0.7f);
+    Ray repeatRay = ray;
+    repeatRay.origin = fmod(ray.origin, 2.0);
+    //float sd = DistanceToSphere(ray, s);
+    float sd = DistanceToSphere(repeatRay, s);
+    return sd;
+}
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     // TODO: insert actual code here!
 
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    uint width, height;
+    Result.GetDimensions(width, height);
+
+    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height));// * 2.0f - 1.0f);
+
+    Ray ray = CreateCameraRay(uv);
+    float rayDistance = 0.0f;
+    int marchingSteps = 0;
+
+    float maxDistance = 100.0f;
+    int maxSteps = 250;
+    float epsilon = 0.001f;
+
+    float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
+
+    while(rayDistance < maxDistance && marchingSteps < maxSteps){
+        marchingSteps += 1;
+        float sceneDistance = DistanceToScene(ray);
+
+        if(sceneDistance < epsilon){
+            result = float4(float(0.1 * marchingSteps), 1.0f, 1.0f, 1.0f);
+            break;
+        }
+        ray.origin += ray.direction * sceneDistance;
+        rayDistance += sceneDistance;
+    }
+
+    Result[id.xy] = result;
+
 }
-
-
 
 // Raymarcher built in metal for macos - Riley Mahr 2019
 
@@ -113,6 +194,8 @@ float distToBox(float3 p, float3 b){
 //    return length(
 //}
 
+// These were experiments using a boolean modifier in ray marching
+
 float opU(float d1, float d2){
     return min(d1, d2);
 }
@@ -125,6 +208,7 @@ float opS(float d1, float d2){
     return max(-d1, d2);
 }
 
+// old code - used to render spheres instead of mandelbulb
 float distToScene(Ray r) {
     Sphere s = Sphere(float3(0., 0., 0.), 1.0);
     Sphere a = Sphere(float3(1., 0., -0.5), 1.0);
@@ -136,15 +220,20 @@ float distToScene(Ray r) {
     return max(sp, -sa);//min(min(sp, sa), gnd);
 }
 
+// actual mandelbulb code
 float2 mandelbulbInfo(float3 pos) {
+
     float3 z = pos;
     float dr = 1.0;
     float r = 0.0;
-    float power = 8;
+    float power = 8; // this will affect complexity of the shape and we should be able to change this
     int iterations = 0;
+
     for (int i = 0; i < 15; i++){
         iterations = i;
+
         r = length(z);
+
         if(r>2){
             break;
         }
@@ -159,7 +248,7 @@ float2 mandelbulbInfo(float3 pos) {
         theta = theta*power;
         phi = phi*power;
 
-        //convert back to cartesian
+        //convert back to cartesian coordinates
         z = zr*float3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
         z+=pos;
     }

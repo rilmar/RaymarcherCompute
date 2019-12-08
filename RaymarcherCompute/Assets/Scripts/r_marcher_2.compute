@@ -1,0 +1,100 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+uint ResultWidth;
+uint ResultHeight;
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+
+
+const int MAX_MARCH = 255;
+const float MAX_DISTANCE = 100.0;
+const float SURFACE_THRESHOLD = .001;
+
+struct Ray
+{
+    float3 origin;
+    float3 direction;
+};
+
+struct Sphere
+{
+    float3 origin;
+    float size;
+    // float SDF() {
+    //     return [this](Ray ray){
+    //         return length(ray.origin - this->origin) - this->size;
+    //     }
+    // }
+};
+
+Ray createCameraRay(float2 uv)
+{
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+    float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+   Ray ray;
+   ray.origin = origin;
+   ray.direction = direction;
+   return ray;
+}
+
+
+
+float SurfaceDistanceFunction(Ray ray, Sphere sphere){
+    return length(ray.origin - sphere.origin) - sphere.size;
+}
+
+Sphere createSphere(float3 origin, float size)
+{
+    Sphere sphere;
+    sphere.origin = origin;
+    sphere.size = size;
+    return sphere;
+}
+
+//todo: change to generic shape not sphere
+float rayMarch(Ray camera, Sphere sphere)
+{
+    float distOrigin = 0.0;
+    float distSurf;
+    for(int i = 0; i < MAX_MARCH; i++){
+        camera.origin = camera.origin + camera.direction * distOrigin;
+        distSurf = SurfaceDistanceFunction(camera, sphere);
+        if (distSurf < SURFACE_THRESHOLD){
+            return distOrigin;
+        }
+        distOrigin += distSurf;
+        if(distOrigin >= MAX_DISTANCE){
+            return MAX_DISTANCE;
+        }
+    }
+    return MAX_DISTANCE;
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height));// * 2.0f - 1.0f);
+    Ray ray = createCameraRay(uv);
+
+    Sphere s = createSphere(float3(1.0f, 0.0f, 0.0f), 0.7f);
+
+    float sceneDist = rayMarch(ray, s);
+
+    float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); 
+    if(sceneDist < SURFACE_THRESHOLD){
+        result = float4(float(0.1 * sceneDist), 1.0f, 1.0f, 1.0f);
+    }
+    //if(dist > MAX_DISTANCE - SURFACE_THRESHOLD){
+     Result[id.xy] = result;
+    //}
+}

@@ -1,297 +1,361 @@
-﻿// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSMain
+﻿#pragma kernel CSMain
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-RWTexture2D<float4> Result;
-uint ResultWidth;
-uint ResultHeight;
-float4x4 _CameraToWorld;
-float4x4 _CameraInverseProjection;
-
+global const int MAX_MARCH = 255;
+const float MAX_DISTANCE = 100.0;
+const SURFACE_THRESHOLD = .0001;
 
 struct Ray
 {
     float3 origin;
     float3 direction;
-};
-
-Ray CreateRay(float3 origin, float3 direction){
-    Ray ray;
-    ray.origin = origin;
-    ray.direction = direction;
-    return ray;
-}
-
-Ray CreateCameraRay(float2 uv){
-    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
-
-    float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
-    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
-    direction = normalize(direction);
-
-    return CreateRay(origin, direction);
 }
 
 struct Sphere
 {
     float3 origin;
-    float radius;
-};
+    float size;
+    float SDF() {
+        return [this](Ray ray){
+            return length(ray.origin - this->origin) - this->size;
+        }
+    }
+}
 
-Sphere CreateSphere(float3 origin, float radius){
+Sphere createSphere(float3 origin, float size)
+{
     Sphere sphere;
     sphere.origin = origin;
-    sphere.radius = radius;
-    return sphere;
+    sphere.size = size;
+    return sphere
 }
 
-float DistanceToSphere(Ray ray, Sphere sphere) {
-    return length(ray.origin - sphere.origin) - sphere.radius;
+//todo: change to generic shape not sphere
+float rayMarch(Ray camera, Sphere sphere,)
+{
+    float distOrigin = 0.0;
+    float distSurf;
+    for(int i = 0; i < MAX_MARCH; i++){
+        camera.origin = camera.origin + camera.direction * distOrigin;
+        distSurf = sphere.SDF(camera);
+        if (distSurf < SURFACE_THRESHOLD){
+            return distOrigin;
+        }
+        distOrigin += distSurf;
+        if(distOrigin >= MAX_DISTANCE){
+            returun MAX_DISTANCE;
+        }
+    }
+    return MAX_DISTANCE;
 }
 
-float DistanceToScene(Ray ray){
-    Sphere s = CreateSphere(float3(0.5f, 0.5f, 0.5f), 0.5f);
-    // Sphere a = CreateSphere(float3(1.0f, 0.0f, 0.0f), 0.7f);
-    Ray repeatRay = ray;
-    repeatRay.origin = fmod(ray.origin, 2.0);
-    //float sd = DistanceToSphere(ray, s);
-    float sd = DistanceToSphere(repeatRay, s);
-    return sd;
-}
-
-[numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    // TODO: insert actual code here!
-
     uint width, height;
     Result.GetDimensions(width, height);
-
     float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height));// * 2.0f - 1.0f);
-
     Ray ray = CreateCameraRay(uv);
-    float rayDistance = 0.0f;
-    int marchingSteps = 0;
 
-    float maxDistance = 100.0f;
-    int maxSteps = 250;
-    float epsilon = 0.001f;
-
-    float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
-
-    while(rayDistance < maxDistance && marchingSteps < maxSteps){
-        marchingSteps += 1;
-        float sceneDistance = DistanceToScene(ray);
-
-        if(sceneDistance < epsilon){
-            result = float4(float(0.1 * marchingSteps), 1.0f, 1.0f, 1.0f);
-            break;
-        }
-        ray.origin += ray.direction * sceneDistance;
-        rayDistance += sceneDistance;
+    float dist = rayMarch(ray, sphere);
+    if(dist > MAX_DISTANCE - SURFACE_THRESHOLD){
+        Result[id.xy] = float4(float(0.1 * dist), 1.0f, 1.0f, 1.0f);
+    }else{
+        Result[id.xy] = float4(1.0, 0.0, 0.0, 1.0)'
     }
-
-    Result[id.xy] = result;
-
 }
+// // Each #kernel tells which function to compile; you can have many kernels
+// #pragma kernel CSMain
 
-// Raymarcher built in metal for macos - Riley Mahr 2019
+// // Create a RenderTexture with enableRandomWrite flag and set it
+// // with cs.SetTexture
+// RWTexture2D<float4> Result;
+// uint ResultWidth;
+// uint ResultHeight;
+// float4x4 _CameraToWorld;
+// float4x4 _CameraInverseProjection;
 
-/**
+
+// struct Ray
+// {
+//     float3 origin;
+//     float3 direction;
+// };
+
+// Ray CreateRay(float3 origin, float3 direction){
+//     Ray ray;
+//     ray.origin = origin;
+//     ray.direction = direction;
+//     return ray;
+// }
+
+// Ray CreateCameraRay(float2 uv){
+//     float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+//     float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+//     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+//     direction = normalize(direction);
+
+//     return CreateRay(origin, direction);
+// }
+
+// struct Sphere
+// {
+//     float3 origin;
+//     float radius;
+// };
+
+// Sphere CreateSphere(float3 origin, float radius){
+//     Sphere sphere;
+//     sphere.origin = origin;
+//     sphere.radius = radius;
+//     return sphere;
+// }
+
+// float DistanceToSphere(Ray ray, Sphere sphere) {
+//     return length(ray.origin - sphere.origin) - sphere.radius;
+// }
+
+// float DistanceToScene(Ray ray){
+//     //Sphere s = CreateSphere(float3(1.f, 1.f, 1.f), 0.5f);
+//     Sphere s = CreateSphere(float3(1.0f, 0.0f, 0.0f), 0.7f);
+//     // Ray repeatRay = ray;
+//     // repeatRay.origin = fmod(ray.origin, 2.0);
+//     float sd = DistanceToSphere(ray, s);
+//    // float sd = DistanceToSphere(repeatRay, s);
+//     return sd;
+// }
+
+// [numthreads(8,8,1)]
+// void CSMain (uint3 id : SV_DispatchThreadID)
+// {
+//     // TODO: insert actual code here!
+
+//     uint width, height;
+//     Result.GetDimensions(width, height);
+
+//     float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height));// * 2.0f - 1.0f);
+
+//     Ray ray = CreateCameraRay(uv);
+//     float rayDistance = 0.0f;
+//     int marchingSteps = 0;
+
+//     float maxDistance = 100.0f;
+//     int maxSteps = 250;
+//     float epsilon = 0.001f;
+
+//     float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
+
+//     while(rayDistance < maxDistance && marchingSteps < maxSteps){
+//         marchingSteps += 1;
+//         float sceneDistance = DistanceToScene(ray);
+
+//         if(sceneDistance < epsilon){
+//             result = float4(float(0.1 * marchingSteps), 1.0f, 1.0f, 1.0f);
+//             break;
+//         }
+//         ray.origin += ray.direction * sceneDistance;
+//         rayDistance += sceneDistance;
+//     }
+
+//     Result[id.xy] = result;
+
+// }
+
+// // Raymarcher built in metal for macos - Riley Mahr 2019
+
+// /**
 
 
-//
-//  raymarcher.metal
-//  MetalRaymarcher
-//
-//  Created by Riley Mahr on 9/18/19.
-//  Copyright © 2019 Riley Mahr. All rights reserved.
+// //
+// //  raymarcher.metal
+// //  MetalRaymarcher
+// //
+// //  Created by Riley Mahr on 9/18/19.
+// //  Copyright © 2019 Riley Mahr. All rights reserved.
 
-#include <metal_stdlib>
-using namespace metal;
+// #include <metal_stdlib>
+// using namespace metal;
 
-//constant float epsilon = 0.001f;
-//constant float maxDst = 200;
-constant int maxStepCount = 250;
+// //constant float epsilon = 0.001f;
+// //constant float maxDst = 200;
+// constant int maxStepCount = 250;
 
-float3 unitVector(float3 v){
-    return v / length(v);
-}
+// float3 unitVector(float3 v){
+//     return v / length(v);
+// }
 
-struct Ray {
-    float3 origin;
-    float3 direction;
-    Ray(float3 o, float3 d) {
-        origin = o;
-        direction = d;
-    }
-};
+// struct Ray {
+//     float3 origin;
+//     float3 direction;
+//     Ray(float3 o, float3 d) {
+//         origin = o;
+//         direction = d;
+//     }
+// };
 
-struct Camera {
-    float3 origin;
-    float3 lookAt;
-    float3 up;
-    float3 u, v, w; // something mathy here that I know I might need
+// struct Camera {
+//     float3 origin;
+//     float3 lookAt;
+//     float3 up;
+//     float3 u, v, w; // something mathy here that I know I might need
     
-    // approximate physical camera
+//     // approximate physical camera
     
-    float3 horizontal, vertical, lower_left_corner; // for positioning rays
+//     float3 horizontal, vertical, lower_left_corner; // for positioning rays
     
-    Camera(float3 orig, float3 look, float3 vup, float vfov, float aspect){
-        origin = orig;
-        lookAt = look;
-        up = vup;
+//     Camera(float3 orig, float3 look, float3 vup, float vfov, float aspect){
+//         origin = orig;
+//         lookAt = look;
+//         up = vup;
         
-        // some mathy stuff
-        w = unitVector(origin - lookAt);
-        u = unitVector(cross(up, w));
-        v = cross(w, u);
+//         // some mathy stuff
+//         w = unitVector(origin - lookAt);
+//         u = unitVector(cross(up, w));
+//         v = cross(w, u);
         
-        float theta = vfov * M_PI_F/180.;
-        float half_height = tan(theta/2);
-        float half_width = aspect*half_height;
+//         float theta = vfov * M_PI_F/180.;
+//         float half_height = tan(theta/2);
+//         float half_width = aspect*half_height;
         
-        lower_left_corner = float3(-half_width, -half_height, 0.);
+//         lower_left_corner = float3(-half_width, -half_height, 0.);
         
-        horizontal = float3(2*half_width,0.,0.);
-        vertical = float3(0., 2*half_height, 0.);
-    }
+//         horizontal = float3(2*half_width,0.,0.);
+//         vertical = float3(0., 2*half_height, 0.);
+//     }
     
-    Ray getRay(float s, float t){
-        return Ray(origin, normalize(float3(-s, -t, 1.)));
-        //return Ray(origin, lower_left_corner + s*horizontal + t*vertical - origin);
-    }
-};
+//     Ray getRay(float s, float t){
+//         return Ray(origin, normalize(float3(-s, -t, 1.)));
+//         //return Ray(origin, lower_left_corner + s*horizontal + t*vertical - origin);
+//     }
+// };
 
-//w = unit_vector(lookfrom - lookat);
-//u = unit_vector(cross(vup, w));
-//v = cross(w, u);
+// //w = unit_vector(lookfrom - lookat);
+// //u = unit_vector(cross(vup, w));
+// //v = cross(w, u);
 
-struct Sphere {
-    float3 center;
-    float radius;
-    Sphere(float3 c, float r) {
-        center = c;
-        radius = r;
-    }
-};
+// struct Sphere {
+//     float3 center;
+//     float radius;
+//     Sphere(float3 c, float r) {
+//         center = c;
+//         radius = r;
+//     }
+// };
 
-float distToGround(Ray ray) {
-    return abs(ray.origin.y);
-}
+// float distToGround(Ray ray) {
+//     return abs(ray.origin.y);
+// }
 
-float distToSphere(Ray ray, Sphere s) {
-    return length(ray.origin - s.center) - s.radius;
-}
+// float distToSphere(Ray ray, Sphere s) {
+//     return length(ray.origin - s.center) - s.radius;
+// }
 
-float distToBox(float3 p, float3 b){
-    float3 d = abs(p)-b;
-    return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
-}
+// float distToBox(float3 p, float3 b){
+//     float3 d = abs(p)-b;
+//     return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+// }
 
-//float distToCylinder(Ray ray) {
-//    return length(
-//}
+// //float distToCylinder(Ray ray) {
+// //    return length(
+// //}
 
-// These were experiments using a boolean modifier in ray marching
+// // These were experiments using a boolean modifier in ray marching
 
-float opU(float d1, float d2){
-    return min(d1, d2);
-}
+// float opU(float d1, float d2){
+//     return min(d1, d2);
+// }
 
-float opI(float d1, float d2){
-    return max(d1, d2);
-}
+// float opI(float d1, float d2){
+//     return max(d1, d2);
+// }
 
-float opS(float d1, float d2){
-    return max(-d1, d2);
-}
+// float opS(float d1, float d2){
+//     return max(-d1, d2);
+// }
 
-// old code - used to render spheres instead of mandelbulb
-float distToScene(Ray r) {
-    Sphere s = Sphere(float3(0., 0., 0.), 1.0);
-    Sphere a = Sphere(float3(1., 0., -0.5), 1.0);
-    //Ray repeatRay = r;
-    //repeatRay.origin = fmod(r.origin, 2.0);
-    float sp = distToSphere(r, s);
-    float sa = distToSphere(r, a);
-    //float gnd = distToGround(r); //should just be height
-    return max(sp, -sa);//min(min(sp, sa), gnd);
-}
+// // old code - used to render spheres instead of mandelbulb
+// float distToScene(Ray r) {
+//     Sphere s = Sphere(float3(0., 0., 0.), 1.0);
+//     Sphere a = Sphere(float3(1., 0., -0.5), 1.0);
+//     //Ray repeatRay = r;
+//     //repeatRay.origin = fmod(r.origin, 2.0);
+//     float sp = distToSphere(r, s);
+//     float sa = distToSphere(r, a);
+//     //float gnd = distToGround(r); //should just be height
+//     return max(sp, -sa);//min(min(sp, sa), gnd);
+// }
 
-// actual mandelbulb code
-float2 mandelbulbInfo(float3 pos) {
+// // actual mandelbulb code
+// float2 mandelbulbInfo(float3 pos) {
 
-    float3 z = pos;
-    float dr = 1.0;
-    float r = 0.0;
-    float power = 8; // this will affect complexity of the shape and we should be able to change this
-    int iterations = 0;
+//     float3 z = pos;
+//     float dr = 1.0;
+//     float r = 0.0;
+//     float power = 8; // this will affect complexity of the shape and we should be able to change this
+//     int iterations = 0;
 
-    for (int i = 0; i < 15; i++){
-        iterations = i;
+//     for (int i = 0; i < 15; i++){
+//         iterations = i;
 
-        r = length(z);
+//         r = length(z);
 
-        if(r>2){
-            break;
-        }
+//         if(r>2){
+//             break;
+//         }
 
-        //convert to polar coordinates
-        float theta = acos(z.z/r);
-        float phi = atan2(z.y,z.x);
-        dr = pow(r, power-1.)*power*dr+1.;
+//         //convert to polar coordinates
+//         float theta = acos(z.z/r);
+//         float phi = atan2(z.y,z.x);
+//         dr = pow(r, power-1.)*power*dr+1.;
 
-        //scale and rotate the point
-        float zr = pow(r,power);
-        theta = theta*power;
-        phi = phi*power;
+//         //scale and rotate the point
+//         float zr = pow(r,power);
+//         theta = theta*power;
+//         phi = phi*power;
 
-        //convert back to cartesian coordinates
-        z = zr*float3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
-        z+=pos;
-    }
-    float dst = 0.5*log(r)*r/dr;
-    return float2(iterations, dst*1);
-}
+//         //convert back to cartesian coordinates
+//         z = zr*float3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
+//         z+=pos;
+//     }
+//     float dst = 0.5*log(r)*r/dr;
+//     return float2(iterations, dst*1);
+// }
 
 
-kernel void compute(texture2d<float, access::write> output [[texture(0)]],
-                    constant float &time [[buffer(0)]],
-                    uint2 gid [[thread_position_in_grid]]) {
-    int width = output.get_width();
-    int height = output.get_height();
-    float2 uv = float2(gid) / float2(width, height); // specific pixel
-    uv = uv * 2.0 - 1.0;
+// kernel void compute(texture2d<float, access::write> output [[texture(0)]],
+//                     constant float &time [[buffer(0)]],
+//                     uint2 gid [[thread_position_in_grid]]) {
+//     int width = output.get_width();
+//     int height = output.get_height();
+//     float2 uv = float2(gid) / float2(width, height); // specific pixel
+//     uv = uv * 2.0 - 1.0;
     
-    // z cannot be closer than -2.1, don't know why yet
-//    float3 camPos = float3(0, 0, -3.1 - sin(time));// + cos(time)); //float3(3 * sin(time), 0., 3 * cos(time));
+//     // z cannot be closer than -2.1, don't know why yet
+// //    float3 camPos = float3(0, 0, -3.1 - sin(time));// + cos(time)); //float3(3 * sin(time), 0., 3 * cos(time));
 
-    float3 origin = float3(0., 0., -3.);
-    float3 lookAt = float3(0., 0., 0.);
-    float3 up = float3(0., 1., 0.);
-    //Camera(float3 orig, float3 look, float3 vup, float vfov, float aspect)
-    Camera cam = Camera(origin, lookAt, up, 90., width/height);
-    //Ray ray = Ray(cam.origin, normalize(float3(-uv, 1.)));
-    Ray ray = cam.getRay(uv.x, uv.y);
+//     float3 origin = float3(0., 0., -3.);
+//     float3 lookAt = float3(0., 0., 0.);
+//     float3 up = float3(0., 1., 0.);
+//     //Camera(float3 orig, float3 look, float3 vup, float vfov, float aspect)
+//     Camera cam = Camera(origin, lookAt, up, 90., width/height);
+//     //Ray ray = Ray(cam.origin, normalize(float3(-uv, 1.)));
+//     Ray ray = cam.getRay(uv.x, uv.y);
         
-    float3 col = float3(0., 0.1, 0.2); // initial color
+//     float3 col = float3(0., 0.1, 0.2); // initial color
     
-    // RayMarch here
-    for (int i=0.; i<maxStepCount; i++) {
-        float2 info = mandelbulbInfo(ray.origin);
-        float dist = info.y;
-        //float dist = distToScene(ray);
-        if (dist < 0.01) { // some min distance
-            col = float3(i / 20., i / 20., 1.); // color by iteration
-            break;
-        }
-        ray.origin += ray.direction * dist;
-    }
+//     // RayMarch here
+//     for (int i=0.; i<maxStepCount; i++) {
+//         float2 info = mandelbulbInfo(ray.origin);
+//         float dist = info.y;
+//         //float dist = distToScene(ray);
+//         if (dist < 0.01) { // some min distance
+//             col = float3(i / 20., i / 20., 1.); // color by iteration
+//             break;
+//         }
+//         ray.origin += ray.direction * dist;
+//     }
 
-    output.write(float4(col, 1.), gid); // * abs((posRelativeToCamera) / 10.0)
-}
+//     output.write(float4(col, 1.), gid); // * abs((posRelativeToCamera) / 10.0)
+// }
 
 
-*/
+// */

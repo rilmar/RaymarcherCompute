@@ -52,11 +52,12 @@ float DistanceToSphere(Ray ray, Sphere sphere) {
 
 float DistanceToScene(Ray ray){
     Sphere s = CreateSphere(float3(0.5f, 0.5f, 0.5f), 0.5f);
-    // Sphere a = CreateSphere(float3(1.0f, 0.0f, 0.0f), 0.7f);
+
+    // this adds the repeat effect
     Ray repeatRay = ray;
     repeatRay.origin = fmod(ray.origin, 2.0);
-    //float sd = DistanceToSphere(ray, s);
-    float sd = DistanceToSphere(repeatRay, s);
+
+    float sd = DistanceToSphere(repeatRay, s); // use ray instead of repeatRay to get rid of repeat effect
     return sd;
 }
 
@@ -65,10 +66,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 {
     // TODO: insert actual code here!
 
-    uint width, height;
-    Result.GetDimensions(width, height);
+    //uint width, height;
+    //Result.GetDimensions(width, height);
 
-    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height));// * 2.0f - 1.0f);
+    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(ResultWidth, ResultHeight) * 2.0f - 1.0f);
 
     Ray ray = CreateCameraRay(uv);
     float rayDistance = 0.0f;

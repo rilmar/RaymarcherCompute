@@ -37,8 +37,8 @@ public class CameraCompute : MonoBehaviour
         InitRenderTexture();
         // Set the target and dispatch the compute shader
         RayTracingShader.SetTexture(0, "Result", _target);
-        //RayTracingShader.SetInt("ResultWidth", _target.width);
-        //RayTracingShader.SetInt("ResultHeight", _target.height);
+        RayTracingShader.SetInt("ResultWidth", _target.width);
+        RayTracingShader.SetInt("ResultHeight", _target.height);
         int threadGroupsX = Mathf.CeilToInt(Screen.width / 8.0f);
         int threadGroupsY = Mathf.CeilToInt(Screen.height / 8.0f);
         RayTracingShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);

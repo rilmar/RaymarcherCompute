@@ -1,164 +1,134 @@
-﻿#pragma kernel CSMain
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
 
-global const int MAX_MARCH = 255;
-const float MAX_DISTANCE = 100.0;
-const SURFACE_THRESHOLD = .0001;
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+uint ResultWidth;
+uint ResultHeight;
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+float4 _Time;
+float4 _SinTime;
+float4 _CosTime;
+
 
 struct Ray
 {
     float3 origin;
     float3 direction;
+};
+
+Ray CreateRay(float3 origin, float3 direction){
+    Ray ray;
+    ray.origin = origin;
+    ray.direction = direction;
+    return ray;
+}
+
+Ray CreateCameraRay(float2 uv){
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+    float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+    return CreateRay(origin, direction);
 }
 
 struct Sphere
 {
     float3 origin;
-    float size;
-    float SDF() {
-        return [this](Ray ray){
-            return length(ray.origin - this->origin) - this->size;
-        }
-    }
-}
+    float radius;
+};
 
-Sphere createSphere(float3 origin, float size)
-{
+Sphere CreateSphere(float3 origin, float radius){
     Sphere sphere;
     sphere.origin = origin;
-    sphere.size = size;
-    return sphere
+    sphere.radius = radius;
+    return sphere;
 }
 
-//todo: change to generic shape not sphere
-float rayMarch(Ray camera, Sphere sphere,)
+float sphereSDF(Ray ray, Sphere sphere) {
+    return length(ray.origin - sphere.origin) - sphere.radius;
+}
+
+struct Box
 {
-    float distOrigin = 0.0;
-    float distSurf;
-    for(int i = 0; i < MAX_MARCH; i++){
-        camera.origin = camera.origin + camera.direction * distOrigin;
-        distSurf = sphere.SDF(camera);
-        if (distSurf < SURFACE_THRESHOLD){
-            return distOrigin;
-        }
-        distOrigin += distSurf;
-        if(distOrigin >= MAX_DISTANCE){
-            returun MAX_DISTANCE;
-        }
-    }
-    return MAX_DISTANCE;
+    float3 origin;
+    float3 length;
+};
+
+// float boxSDF(Box box)
+// {
+//   float3 q = abs(Box.origin) - Box.length;
+//   return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+// }
+
+Box createBox(float3 origin, float3 length){
+    Box box;
+    box.origin = origin;
+    box.length = length;
+
+    return box;
 }
 
+float smin( float a, float b, float k )
+{
+    float h = max( k-abs(a-b), 0.0 )/k;
+    return min( a, b ) - h*h*k*(1.0/4.0);
+}
+
+
+float DistanceToScene(Ray ray){
+    //Sphere s = CreateSphere(float3(1.f, 1.f, 1.f), 0.5f);
+    Sphere s = CreateSphere(float3(10.0f, 0.0f, 0.0f), 0.2f);
+    Sphere s1 = CreateSphere(float3(5.0f, 0.0f, 0.0f), 0.7f);
+    //Box b = createBox(float3(5.0f,0.0f,0.0f),float3(.7f));
+    s.origin.x *= abs(_SinTime.y);
+    // Ray repeatRay = ray;
+    // repeatRay.origin = fmod(ray.origin, 2.0);
+    float sd = sphereSDF(ray, s);
+    float sd1 = sphereSDF(ray, s1);
+   // float sd = DistanceToSphere(repeatRay, s);
+    return smin(sd1,sd,1);
+}
+
+[numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
+    // TODO: insert actual code here!
+
     uint width, height;
     Result.GetDimensions(width, height);
+
     float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height));// * 2.0f - 1.0f);
+
     Ray ray = CreateCameraRay(uv);
+    float rayDistance = 0.0f;
+    int marchingSteps = 0;
 
-    float dist = rayMarch(ray, sphere);
-    if(dist > MAX_DISTANCE - SURFACE_THRESHOLD){
-        Result[id.xy] = float4(float(0.1 * dist), 1.0f, 1.0f, 1.0f);
-    }else{
-        Result[id.xy] = float4(1.0, 0.0, 0.0, 1.0)'
+    float maxDistance = 100.0f;
+    int maxSteps = 250;
+    float epsilon = 0.001f;
+
+    float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
+
+    while(rayDistance < maxDistance && marchingSteps < maxSteps){
+        marchingSteps += 1;
+        float sceneDistance = DistanceToScene(ray);
+
+        if(sceneDistance < epsilon){
+            result = float4(float(0.1 * marchingSteps), 1.0f, 1.0f, 1.0f);
+            break;
+        }
+        ray.origin += ray.direction * sceneDistance;
+        rayDistance += sceneDistance;
     }
+
+    Result[id.xy] = result;
+
 }
-// // Each #kernel tells which function to compile; you can have many kernels
-// #pragma kernel CSMain
-
-// // Create a RenderTexture with enableRandomWrite flag and set it
-// // with cs.SetTexture
-// RWTexture2D<float4> Result;
-// uint ResultWidth;
-// uint ResultHeight;
-// float4x4 _CameraToWorld;
-// float4x4 _CameraInverseProjection;
-
-
-// struct Ray
-// {
-//     float3 origin;
-//     float3 direction;
-// };
-
-// Ray CreateRay(float3 origin, float3 direction){
-//     Ray ray;
-//     ray.origin = origin;
-//     ray.direction = direction;
-//     return ray;
-// }
-
-// Ray CreateCameraRay(float2 uv){
-//     float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
-
-//     float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
-//     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
-//     direction = normalize(direction);
-
-//     return CreateRay(origin, direction);
-// }
-
-// struct Sphere
-// {
-//     float3 origin;
-//     float radius;
-// };
-
-// Sphere CreateSphere(float3 origin, float radius){
-//     Sphere sphere;
-//     sphere.origin = origin;
-//     sphere.radius = radius;
-//     return sphere;
-// }
-
-// float DistanceToSphere(Ray ray, Sphere sphere) {
-//     return length(ray.origin - sphere.origin) - sphere.radius;
-// }
-
-// float DistanceToScene(Ray ray){
-//     //Sphere s = CreateSphere(float3(1.f, 1.f, 1.f), 0.5f);
-//     Sphere s = CreateSphere(float3(1.0f, 0.0f, 0.0f), 0.7f);
-//     // Ray repeatRay = ray;
-//     // repeatRay.origin = fmod(ray.origin, 2.0);
-//     float sd = DistanceToSphere(ray, s);
-//    // float sd = DistanceToSphere(repeatRay, s);
-//     return sd;
-// }
-
-// [numthreads(8,8,1)]
-// void CSMain (uint3 id : SV_DispatchThreadID)
-// {
-//     // TODO: insert actual code here!
-
-//     uint width, height;
-//     Result.GetDimensions(width, height);
-
-//     float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height));// * 2.0f - 1.0f);
-
-//     Ray ray = CreateCameraRay(uv);
-//     float rayDistance = 0.0f;
-//     int marchingSteps = 0;
-
-//     float maxDistance = 100.0f;
-//     int maxSteps = 250;
-//     float epsilon = 0.001f;
-
-//     float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
-
-//     while(rayDistance < maxDistance && marchingSteps < maxSteps){
-//         marchingSteps += 1;
-//         float sceneDistance = DistanceToScene(ray);
-
-//         if(sceneDistance < epsilon){
-//             result = float4(float(0.1 * marchingSteps), 1.0f, 1.0f, 1.0f);
-//             break;
-//         }
-//         ray.origin += ray.direction * sceneDistance;
-//         rayDistance += sceneDistance;
-//     }
-
-//     Result[id.xy] = result;
-
-// }
 
 // // Raymarcher built in metal for macos - Riley Mahr 2019
 

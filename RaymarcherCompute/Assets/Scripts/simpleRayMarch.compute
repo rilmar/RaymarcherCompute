@@ -3,9 +3,7 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float4> Result;
-uint ResultWidth;
-uint ResultHeight;
+
 float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
 
@@ -25,7 +23,6 @@ struct Sphere
     float size;
 };
 
-//returns a sphere struct
 Sphere createSphere(float3 origin, float size)
 {
     Sphere sphere;
@@ -42,7 +39,6 @@ Ray createRay(float3 origin, float3 direction){
     return ray;
 }
 
-//setup a camera ray normalized to unity3d enviornment
 Ray createCameraRay(float2 uv){
     float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
 
@@ -53,57 +49,45 @@ Ray createCameraRay(float2 uv){
     return createRay(origin, direction);
 }
 
-//Signed Distance Functions
-//SDF for sphere
-float sphereSDF(Sphere sphere, Ray camera) {
-    return distance(camera.origin, sphere.origin) - sphere.size;
+float sphereSDF(float3 marchPosition, Sphere sphere) {
+    return length(marchPosition - sphere.origin) - sphere.size; 
 }
 
-//Calculate the SDF for every shape in scene
-float sceneSDF(Sphere sphere, float3 marchPoint){
-    return sphereSDF(sphere, marchPoint);
+float distanceToScene(float3 marchPosition){
+    Sphere s = createSphere(float3(1.0f, 0.0f, 0.0f), 0.7f);
+    float sd =sphereSDF(marchPosition, s);
+    return sd;
 }
 
-
-
-
-//Shortest Distance to surface to find next position on ray
-float shortestDistanceToSurface(Ray ray, Sphere sphere) {
-    float distOrigin = 0.0;
-    for (int i = 0; i < MAX_MARCH; i++) {
-        float3 marchPoint = ray.origin.xyz + distOrigin * ray.direction;
-        float dist = sceneSDF(sphere, marchPoint);
-        if (dist < SURFACE_THRESHOLD) {
-			return distOrigin;
-        }
-        distOrigin += dist;
-        if (distOrigin >= MAX_DISTANCE) {
-            return MAX_DISTANCE;
-        }
+float rayMarch(Ray ray) {
+	float dO=0.;
+    
+    for(int i=0; i<MAX_DISTANCE; i++) {
+    	float3 marchPosition = ray.origin + ray.direction * dO;
+        float dS = distanceToScene(marchPosition);
+        dO += dS;
+        if(dO>MAX_DISTANCE || dS<SURFACE_THRESHOLD) break;
     }
-    return MAX_DISTANCE;
+    
+    return dO;
 }
 
-
+RWTexture2D<float4> Result;
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
+    // TODO: insert actual code here!
+    //Raymarching Algorithm here
     uint width, height;
     Result.GetDimensions(width, height);
     float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height));// * 2.0f - 1.0f);
+    //set up ray with ray origin and ray direction (x,y position of camera, facing in positive z direction)
     Ray camera = createCameraRay(uv);
 
-    Sphere sphere = createSphere(float3(1.0f, 0.0f, 0.0f), 0.1f);
-
-    float dist = shortestDistanceToSurface(camera, sphere);
-    
-    if (dist > MAX_DISTANCE - SURFACE_THRESHOLD) {
-        // Didn't hit anything
-        Result[id.xy] = float4(0.0, 0.0, 0.0, 0.0);
-		return;
-    }
-
-    Result[id.xy] = float4(1.0, 0.0, 0.0, 1.0);;
-
+    float d = rayMarch(camera);
+    float4 result = float4(camera.direction * 0.5f + 0.5f, 1.0f);
+    // if(d <= SURFACE_THRESHOLD){
+    //     result = float4(float(0.1 * d), 1.0f, 1.0f, 1.0f);
+    // }
 }

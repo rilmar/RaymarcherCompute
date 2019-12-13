@@ -1,0 +1,142 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+RWTexture2D<float4> Result;
+uint ResultWidth;
+uint ResultHeight;
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+
+float _Power;
+float3 _LightDirection;
+float _Rim;
+
+float _Epsilon = 0.001f;
+float _MaxDistance = 200.0f;
+int _MaxSteps = 500;
+
+Texture2D<float4> _ImageInput; // render output of the current scene
+
+struct Ray
+{
+    float3 origin;
+    float3 direction;
+};
+
+Ray CreateRay(float3 origin, float3 direction){
+    Ray ray;
+    ray.origin = origin;
+    ray.direction = direction;
+    return ray;
+}
+
+Ray CreateCameraRay(float2 uv){
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+    float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+    return CreateRay(origin, direction);
+}
+
+float2 mandelbulbInfo(float3 pos){
+
+    float3 z = pos;
+    float dr = 1.0;
+    float r = 0.0;
+    float power = _Power;
+    //float power = 8; // this will affect complexity of the shape and we should be able to change this
+    int iterations = 0;
+
+    for (int i = 0; i < 15; i++){
+        iterations = i;
+
+        r = length(z);
+
+        if(r>2){
+            break;
+        }
+
+        //convert to polar coordinates
+        float theta = acos(z.z/r);
+        float phi = atan2(z.y,z.x);
+        dr = pow(r, power - 1.0) * power * dr + 1.0;
+
+        //scale and rotate the point
+        float zr = pow(r,power);
+        theta = theta*power;
+        phi = phi*power;
+
+        //convert back to cartesian coordinates
+        z = zr*float3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
+        z+=pos;
+    }
+    float dst = 0.5*log(r)*r/dr;
+    return float2(iterations, dst * 1);
+}
+
+float2 DistanceToScene(Ray ray){
+    float2 sd = mandelbulbInfo(ray.origin);
+    return sd;
+}
+
+float3 EstimateNormal(float3 p) {
+    float x = mandelbulbInfo(float3(p.x+_Epsilon,p.y,p.z)).y - mandelbulbInfo(float3(p.x-_Epsilon,p.y,p.z)).y;
+    float y = mandelbulbInfo(float3(p.x,p.y+_Epsilon,p.z)).y - mandelbulbInfo(float3(p.x,p.y-_Epsilon,p.z)).y;
+    float z = mandelbulbInfo(float3(p.x,p.y,p.z+_Epsilon)).y - mandelbulbInfo(float3(p.x,p.y,p.z-_Epsilon)).y;
+    return normalize(float3(x,y,z));
+}
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(ResultWidth, ResultHeight) * 2.0f - 1.0f);
+
+    Ray ray = CreateCameraRay(uv);
+    float rayDistance = 0.0f;
+    int marchingSteps = 0;
+    
+    float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
+
+    while(rayDistance < _MaxDistance && marchingSteps < _MaxSteps){
+        marchingSteps += 1;
+        float2 sceneResult = DistanceToScene(ray);
+        float sceneDistance = sceneResult.y;
+
+        if(sceneDistance < _Epsilon){
+
+            float iterations = sceneResult.x;
+
+            float gen = fmod(iterations, 3.0);
+
+            float3 normal = EstimateNormal(ray.origin-ray.direction*_Epsilon*2);
+
+            float lighting = saturate(dot(normal*.5+.5,-_LightDirection));
+            float3 color = saturate(iterations/10.0);
+
+            if(gen < 1){
+                color = float4(0, iterations/10.0, iterations/5.0,1);
+            } else if (gen < 2){
+                color = float4(iterations/2.0, iterations/6.0, iterations/6.0, 1);
+            }
+            
+            result = float4(color + lighting, 1);
+
+            
+            
+            break;
+        }
+        ray.origin += ray.direction * sceneDistance;
+        rayDistance += sceneDistance;
+    }
+
+    // we can blend with an input texture using something like this:
+    //if(marchingSteps >= _MaxSteps || rayDistance >= _MaxDistance){
+    //    Result[id.xy] = float4(_ImageInput[id.xy].x, _ImageInput[id.xy].y, _ImageInput[id.xy].z, 1);
+    //} else {
+    //    Result[id.xy] = lerp(result, 1, _Rim);// * rim;
+    //}
+    Result[id.xy] = lerp(result, 1, _Rim);
+}

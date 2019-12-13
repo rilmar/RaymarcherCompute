@@ -15,6 +15,15 @@ public class CameraMovement : MonoBehaviour
     public float minDistance = 2f; // any closer and we will receive unpredicatable behavior - needs to be evaluated
     public float maxDistance = 15f;
 
+    public KeyCode zoomInKey = KeyCode.S;
+    public KeyCode zoomOutKey = KeyCode.W;
+
+    public float fovMin = 18.0f;
+    public float fovMax = 60.0f;
+    public float fovStep = 0.2f;
+
+    private Camera camera;
+
     private float padScroll;
 
     private Rigidbody rigidbody;
@@ -36,6 +45,8 @@ public class CameraMovement : MonoBehaviour
         {
             rigidbody.freezeRotation = true;
         }
+
+        camera = GetComponent<Camera>();
     }
 
     void LateUpdate()
@@ -57,16 +68,31 @@ public class CameraMovement : MonoBehaviour
             
             distance = Mathf.Clamp(distance - GetScrollValue() * 5, minDistance, maxDistance);
 
-            RaycastHit hit;
-            if (Physics.Linecast(target.position, transform.position, out hit))
-            {
-                distance -= hit.distance;
-            }
+            //RaycastHit hit;
+            //if (Physics.Linecast(target.position, transform.position, out hit))
+            //{
+            //    distance -= hit.distance;
+            //}
             Vector3 negDistance = new Vector3(0.0f, 0.0f, -distance);
             Vector3 position = rotation * negDistance + target.position;
 
             transform.rotation = rotation;
             transform.position = position;
+        }
+
+        if (Input.GetKey(zoomInKey))
+        {
+            float currentFov = camera.fieldOfView;
+            currentFov += fovStep;
+            camera.fieldOfView = Mathf.Clamp(currentFov, fovMin, fovMax);
+
+
+        }
+        else if (Input.GetKey(zoomOutKey))
+        {
+            float currentFov = camera.fieldOfView;
+            currentFov -= fovStep;
+            camera.fieldOfView = Mathf.Clamp(currentFov, fovMin, fovMax);
         }
     }
 

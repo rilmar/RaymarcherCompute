@@ -3,31 +3,52 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /**
+ * Script used to setup base functionality of attching compute shader to camera
+ * Extend script to implement more complicated shaders
+ * This script will run compute shader with only a few base inputs, including:
+ *
+ * camera position
+ * camera projection
+ * result texture for return
+ *
  * Credit to http://blog.three-eyed-games.com/2018/05/03/gpu-ray-tracing-in-unity-part-1/
- * for initial setup of shader code in Unity
+ * for initial instruction
  */
+
 
 [ExecuteInEditMode, ImageEffectAllowedInSceneView]
 public class CameraCompute : MonoBehaviour
 {
-    public ComputeShader RayTracingShader;
+    public ComputeShader UserShader;
     private RenderTexture _target;
     private Camera _camera;
+
+    public virtual void GetSceneInformation()
+    {
+
+    }
 
     private void Awake()
     {
         _camera = GetComponent<Camera>();
     }
 
-    private void SetShaderParameters()
+    private void SetShaderCameraParameters()
     {
-        RayTracingShader.SetMatrix("_CameraToWorld", _camera.cameraToWorldMatrix);
-        RayTracingShader.SetMatrix("_CameraInverseProjection", _camera.projectionMatrix.inverse);
+        UserShader.SetMatrix("_CameraToWorld", _camera.cameraToWorldMatrix);
+        UserShader.SetMatrix("_CameraInverseProjection", _camera.projectionMatrix.inverse);
+    }
+
+    public virtual void SetShaderUserParameters(RenderTexture source)
+    {
+
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        SetShaderParameters();
+        GetSceneInformation();
+        SetShaderCameraParameters();
+        SetShaderUserParameters(source);
         Render(destination);
     }
 
@@ -35,13 +56,16 @@ public class CameraCompute : MonoBehaviour
     {
         // Make sure we have a current render target
         InitRenderTexture();
+
         // Set the target and dispatch the compute shader
-        RayTracingShader.SetTexture(0, "Result", _target);
-        RayTracingShader.SetInt("ResultWidth", _target.width);
-        RayTracingShader.SetInt("ResultHeight", _target.height);
+        UserShader.SetTexture(0, "Result", _target);
+        UserShader.SetInt("ResultWidth", _target.width);
+        UserShader.SetInt("ResultHeight", _target.height);
+        // Create thread groups
         int threadGroupsX = Mathf.CeilToInt(Screen.width / 8.0f);
         int threadGroupsY = Mathf.CeilToInt(Screen.height / 8.0f);
-        RayTracingShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+        UserShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+
         // Blit the result texture to the screen
         Graphics.Blit(_target, destination);
     }

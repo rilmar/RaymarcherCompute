@@ -14,13 +14,13 @@ float4 _CosTime;
 
 struct Ray
 {
-    float3 origin;
+    float3 position;
     float3 direction;
 };
 
 Ray CreateRay(float3 origin, float3 direction){
     Ray ray;
-    ray.origin = origin;
+    ray.position = origin;
     ray.direction = direction;
     return ray;
 }
@@ -42,7 +42,6 @@ struct Shape
     float3 size;
 };
 
-
 struct Scene {
     Shape A;
     Shape B;
@@ -51,30 +50,18 @@ struct Scene {
     int mode; //0 none, 1 merge, 2 cut, 3 clip
 };
 
-
-// struct Sphere
-// {
-//     float3 origin;
-//     float3 radius;
-// };
-
-// Sphere CreateSphere(float3 origin, float3 radius){
-//     Sphere sphere;
-//     sphere.origin = origin;
-//     sphere.radius = radius;
-//     return sphere;
-//}
-
+//Signed Distance Function for Sphere
 float sphereSDF(Ray ray, Shape sphere) {
-    return length(ray.origin - sphere.origin) - sphere.size.x;
+    return length(ray.position - sphere.origin) - sphere.size.x;
 
 }
 
+//Signed Distance Function for Box
 float boxSDF(Ray ray, Shape box)
 {
-    float3 o = abs(ray.origin - box.origin) - box.size;
-    float ud = length(max(o,0));
-    float n = max(max(min(o.x,0),min(o.y,0)), min(o.z,0));
+    float3 o = abs(ray.position - box.origin) - box.size;
+    float ud = length(max(o,0)); //wherever origin point is greater than 0
+    float n = max(max(min(o.x,0),min(o.y,0)), min(o.z,0)); //clip each plane to the origin point
     return ud+n;
 }
 
@@ -89,6 +76,11 @@ Shape createShape(float3 origin, float3 size, int type){
 }
 
 //smooth min function
+//returns a if a -b >= k
+//returns b if a-b <= -k
+//returns f(a,b,k) if a-b is betweem (k,-k)
+// f(a,b,k) = a+h(b−a),h∈[0,1]
+//h = .5 + (a-b)/2k
 float smin( float a, float b, float k )
 {
     float h = max( k-abs(a-b), 0.0 )/k;
@@ -97,12 +89,11 @@ float smin( float a, float b, float k )
 
 
 float DistanceToScene(Ray ray, Scene scene){
-    //Sphere s = CreateSphere(float3(1.f, 1.f, 1.f), 0.5f);
-    //Box b = createBox(float3(5.0f,0.0f,0.0f),float3(.7f));
     Shape A = scene.A;
     Shape B = scene.B;
     A.origin.x *= 2*_SinTime.z;
 
+    //calculate distance from scene for both shapes
     float dA;
     if(A.type == 0){
       dA =  sphereSDF(ray, A);
@@ -117,9 +108,7 @@ float DistanceToScene(Ray ray, Scene scene){
        dB = boxSDF(ray, B);
     }
 
-
-    
-   // float sd = DistanceToSphere(repeatRay, s);
+   //operation to perform on SDF values
    switch (scene.mode){
       case 0: //normal
         return min(dA,dB);
@@ -163,37 +152,36 @@ Scene setScene(){
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    // TODO: insert actual code here!
 
-    //Shape A = createShape(float3(1.0f, 0.0f, 0.0f), float3(0.4f,0.4f,0.4f), 0);
-    //Shape B = createShape(float3(0.0f, 0.0f, 0.0f),float3(.5f, .5f, .5f), 1);
     Scene scene = setScene();
 
     uint width, height;
     Result.GetDimensions(width, height);
 
-    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height) * 2.0f - 1.0f);
+    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height) * 2.0f - 1.0f); //normalize coordinates to the window size
 
     Ray ray = CreateCameraRay(uv);
-    float rayDistance = 0.0f;
-    int marchingSteps = 0;
+    float rayDistance = 0.0f; //March point's distance from the camera
+    int marchingSteps = 0; //Number of march points on ray
 
-    float maxDistance = 100.0f;
-    int maxSteps = 250;
-    float epsilon = 0.001f;
+    float maxDistance = 100.0f; //Effectively the "Far Plane"
+    int maxSteps = 250; //How many march operations we are willing to compute
+    float surfaceThreshold = 0.001f; //What distance from surface (march distance) we consider ahit
 
     float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
 
-    while(rayDistance < maxDistance && marchingSteps < maxSteps){
-        marchingSteps += 1;
-        float sceneDistance = DistanceToScene(ray, scene);
+    while(rayDistance < maxDistance && marchingSteps < maxSteps){ //While we haven't surpassed maximum distance or steps
+        marchingSteps += 1; //increment number of march steps we have taken
+        float sceneDistance = DistanceToScene(ray, scene); //get the distance to the scene
 
-        if(sceneDistance < epsilon){
+        if(sceneDistance < surfaceThreshold){ //When the distance is less than the surface threshold, we consider this a hit on the scene
             result = float4(float(0.1 * marchingSteps), 1.0f, 1.0f, 1.0f);
             break;
         }
-        ray.origin += ray.direction * sceneDistance;
-        rayDistance += sceneDistance;
+        //when we don't get a hit we march the ray equal to the distance to scene, move ray position for SDF calculation
+        //increase distance from camera.
+        ray.position += ray.direction * sceneDistance; 
+        rayDistance += sceneDistance; 
     }
 
     Result[id.xy] = result;

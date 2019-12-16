@@ -87,7 +87,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     float d = rayMarch(camera);
     float4 result = float4(camera.direction * 0.5f + 0.5f, 1.0f);
-    // if(d <= SURFACE_THRESHOLD){
-    //     result = float4(float(0.1 * d), 1.0f, 1.0f, 1.0f);
-    // }
+    if(d <= SURFACE_THRESHOLD){
+        result = float4(float(0.1 * d), 1.0f, 1.0f, 1.0f);
+    }
 }

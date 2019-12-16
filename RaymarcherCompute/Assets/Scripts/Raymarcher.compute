@@ -47,8 +47,7 @@ struct Scene {
     Shape A;
     Shape B;
     Shape shapes[10];
-    int shapeAtype;
-    int shapeBtype;
+    int numShapes;
     int mode; //0 none, 1 merge, 2 cut, 3 clip
 };
 

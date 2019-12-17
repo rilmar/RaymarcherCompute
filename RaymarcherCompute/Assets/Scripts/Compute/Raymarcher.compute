@@ -8,6 +8,17 @@ uint ResultWidth;
 uint ResultHeight;
 float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
+
+float3 _Position;
+float3 _Scale;
+
+float _ColorModifier;
+
+uint _SceneMode;
+float _SurfaceThreshold = 0.001f; //What distance from surface (march distance) we consider a hit
+
+
+// Included shader variables
 float4 _Time;
 float4 _SinTime;
 float4 _CosTime;
@@ -47,7 +58,6 @@ struct Scene
 {
 	Shape A;
 	Shape B;
-//	Shape shapes[10];
 	int numShapes;
 	int mode; // 0 none, 1 merge, 2 cut, 3 clip
 };
@@ -90,7 +100,7 @@ float smin(float a, float b, float k)
 float DistanceToScene(Ray ray, Scene scene) {
 	Shape A = scene.A;
 	Shape B = scene.B;
-	A.origin.x *= 2 * _SinTime.z;
+	//A.origin.x *= 2 * _SinTime.z;
 
 	//calculate distance from scene for both shapes
 	float dA;
@@ -139,13 +149,13 @@ float DistanceToScene(Ray ray, Scene scene) {
 Scene setScene() {
 	Scene scene;
 
-	Shape A = createShape(float3(1.0f, 0.0f, 0.0f), float3(0.6f, 0.6f, 0.6f), 0);
+	Shape A = createShape(_Position, _Scale, 0);
 	Shape B = createShape(float3(0.0f, 0.0f, 0.0f), float3(.5f, .5f, .5f), 1);
 
 
 	scene.A = A;
 	scene.B = B;
-	scene.mode = 2;
+	scene.mode = _SceneMode;
 
 	return scene;
 }
@@ -167,16 +177,18 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	float maxDistance = 100.0f; //Effectively the "Far Plane"
 	int maxSteps = 250; //How many march operations we are willing to compute
-	float surfaceThreshold = 0.001f; //What distance from surface (march distance) we consider ahit
 
 	float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
+
+    float3 tmp = float3(1 - (ray.direction * 0.5f + 0.5f));
+
 
 	while (rayDistance < maxDistance && marchingSteps < maxSteps) { //While we haven't surpassed maximum distance or steps
 		marchingSteps += 1; //increment number of march steps we have taken
 		float sceneDistance = DistanceToScene(ray, scene); //get the distance to the scene
 
-		if (sceneDistance < surfaceThreshold) { //When the distance is less than the surface threshold, we consider this a hit on the scene
-			result = float4(float(0.1 * marchingSteps), 1.0f, 1.0f, 1.0f);
+		if (sceneDistance < _SurfaceThreshold) { //When the distance is less than the surface threshold, we consider this a hit on the scene
+			result = float4(marchingSteps * tmp.x * _ColorModifier, marchingSteps * tmp.y * _ColorModifier, marchingSteps * tmp.z * _ColorModifier, 1.0f);
 			break;
 		}
 		//when we don't get a hit we march the ray equal to the distance to scene, move ray position for SDF calculation

@@ -42,7 +42,7 @@ Ray CreateCameraRay(float2 uv){
 
 float2 mandelbulbInfo(float3 pos){
 
-    float3 z = pos;
+    float3 p = pos;
     float dr = 1.0;
     float r = 0.0;
     float power = _Power;
@@ -52,15 +52,15 @@ float2 mandelbulbInfo(float3 pos){
     for (int i = 0; i < 15; i++){
         iterations = i;
 
-        r = length(z);
+        r = length(p);
 
         if(r>2){
             break;
         }
 
         //convert to polar coordinates
-        float theta = acos(z.z/r);
-        float phi = atan2(z.y,z.x);
+        float theta = acos(p.z/r);
+        float phi = atan2(p.y,p.x);
         dr = pow(r, power - 1.0) * power * dr + 1.0;
 
         //scale and rotate the point
@@ -69,8 +69,12 @@ float2 mandelbulbInfo(float3 pos){
         phi = phi*power;
 
         //convert back to cartesian coordinates
-        z = zr*float3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
-        z+=pos;
+        float x = sin(theta)*cos(phi);
+        float y = sin(phi)*sin(theta);
+        float z = cos(theta);
+
+        p = zr*float3(x, y, z);
+        p+=pos;
     }
     float dst = 0.5*log(r)*r/dr;
     return float2(iterations, dst * 1);
@@ -131,12 +135,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         ray.origin += ray.direction * sceneDistance;
         rayDistance += sceneDistance;
     }
-
-    // we can blend with an input texture using something like this:
-    //if(marchingSteps >= _MaxSteps || rayDistance >= _MaxDistance){
-    //    Result[id.xy] = float4(_ImageInput[id.xy].x, _ImageInput[id.xy].y, _ImageInput[id.xy].z, 1);
-    //} else {
-    //    Result[id.xy] = lerp(result, 1, _Rim);// * rim;
-    //}
+    
     Result[id.xy] = lerp(result, 1, _Rim);
 }

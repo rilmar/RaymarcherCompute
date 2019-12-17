@@ -11,4 +11,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Fractal.unity
     guid: 97fa692363eb843c3a221f8cd555ca44
+  - enabled: 1
+    path: Assets/Scenes/RayMarcher.unity
+    guid: 3403a68414e5c4749a203516fa5a8c56
   m_configObjects: {}

@@ -47,18 +47,18 @@ struct Scene
 {
 	Shape A;
 	Shape B;
-	Shape shapes[10];
+//	Shape shapes[10];
 	int numShapes;
 	int mode; // 0 none, 1 merge, 2 cut, 3 clip
 };
 
 float sphereSDF(Ray ray, Shape sphere) {
-	return length(ray.position - sphere.origin) - sphere.size.x;
+	return length(ray.origin - sphere.origin) - sphere.size.x;
 }
 
 // Signed Distance Function for a box
-float boxSDF() {
-	float3 o = abs(ray.position - box.origin) - box.size;
+float boxSDF(Ray ray, Shape box) {
+	float3 o = abs(ray.origin - box.origin) - box.size;
 	float ud = length(max(o, 0)); //wherever origin point is greater than 0
 	float n = max(max(min(o.x, 0), min(o.y, 0)), min(o.z, 0)); //clip each plane to the origin point
 	return ud + n;
@@ -181,7 +181,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 		}
 		//when we don't get a hit we march the ray equal to the distance to scene, move ray position for SDF calculation
 		//increase distance from camera.
-		ray.position += ray.direction * sceneDistance;
+		ray.origin += ray.direction * sceneDistance;
 		rayDistance += sceneDistance;
 	}
 

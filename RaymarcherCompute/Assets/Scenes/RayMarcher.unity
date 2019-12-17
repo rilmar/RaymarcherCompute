@@ -260,9 +260,8 @@ GameObject:
   - component: {fileID: 791775524}
   - component: {fileID: 791775523}
   - component: {fileID: 791775522}
-  - component: {fileID: 791775525}
   - component: {fileID: 791775526}
-  - component: {fileID: 791775527}
+  - component: {fileID: 791775525}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -342,12 +341,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 791775521}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4ee8a74400f3d43e0b5fc1bd5ebfe6bd, type: 3}
+  m_Script: {fileID: 11500000, guid: d42d4a2872060d148977991178c8e731, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  UserShader: {fileID: 0}
+  UserShader: {fileID: 7200000, guid: d6e66f39ea04740f489e086d98377735, type: 3}
 --- !u!114 &791775526
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -368,23 +367,11 @@ MonoBehaviour:
   yMaxLimit: 80
   minDistance: 3
   maxDistance: 15
---- !u!114 &791775527
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 791775521}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e2139d216e0154dd693ac59e436ec6a5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  UserShader: {fileID: 7200000, guid: cc77bc1f750d6492db5093c604b76089, type: 3}
-  power: 6.65
-  powerStep: 0.2
-  powerDecreaseKey: 276
-  powerIncreaseKey: 275
+  zoomInKey: 115
+  zoomOutKey: 119
+  fovMin: 18
+  fovMax: 60
+  fovStep: 0.2
 --- !u!1 &1075486428
 GameObject:
   m_ObjectHideFlags: 0
@@ -658,8 +645,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4284555679e0d4bf387d4bc2ea629efd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  canvasGroup: {fileID: 1075486432}
-  key: 104
+  HelpPanel: {fileID: 0}
+  helpKey: 104
 --- !u!4 &1532243497
 Transform:
   m_ObjectHideFlags: 0

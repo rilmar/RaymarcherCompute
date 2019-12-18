@@ -10,6 +10,8 @@ Install Unity Hub, if not installed.  (This helps to manage version number and i
 
 https://unity3d.com/get-unity/download
 
+![Download Unity Hub](./images/DownloadUnityHub.png)
+
 In the Installs tab of Unity Hub, add a new installation.  Install version 2019.2.12f1.  include build support for your operating system in the install. Support for other builds can be added later or now if you would like but shouldn't be needed for this particular project.
 
 Wait for install.

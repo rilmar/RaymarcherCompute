@@ -47,6 +47,10 @@ To Build go to File -> Build Settings -> Build.
 
 For those on windows 10, RAMARCHERWIN.zip contains the application.  Unzip onto your computer and open the application, RaymarcherCompute, to run.
 
+For those on MACos, RAYMARCHERMACos.zip contains the applications as well.  Unzip and run.
+
+Pressing 'Esc' from the top level menu exits the application.
+
 
 ### Project Instructions:
 

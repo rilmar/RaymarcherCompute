@@ -9,8 +9,11 @@ uint ResultHeight;
 float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
 
-float3 _Position;
-float3 _Scale;
+float3 _APosition;
+float3 _AScale;
+
+float3 _BPosition;
+float3 _BScale;
 
 float _ColorModifier;
 
@@ -149,8 +152,8 @@ float DistanceToScene(Ray ray, Scene scene) {
 Scene setScene() {
 	Scene scene;
 
-	Shape A = createShape(_Position, _Scale, 0);
-	Shape B = createShape(float3(0.0f, 0.0f, 0.0f), float3(.5f, .5f, .5f), 1);
+	Shape A = createShape(_APosition, _AScale, 0);
+	Shape B = createShape(_BPosition, _BScale, 1);
 
 
 	scene.A = A;
@@ -176,7 +179,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	int marchingSteps = 0; //Number of march points on ray
 
 	float maxDistance = 100.0f; //Effectively the "Far Plane"
-	int maxSteps = 250; //How many march operations we are willing to compute
+	int maxSteps = 500; //How many march operations we are willing to compute
 
 	float4 result = float4(ray.direction * 0.5f + 0.5f, 1.0f); // This will be background gradient for now
 

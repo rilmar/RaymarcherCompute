@@ -45,12 +45,13 @@ To Build go to File -> Build Settings -> Build.
 
 ![build settings](./images/BuildSettings.png)
 
+For those on windows 10, RAMARCHERWIN.zip contains the application.  Unzip onto your computer and open the application, RaymarcherCompute, to run.
+
 
 ### Project Instructions:
 
-On opening the project there are really only two scripts that will control the rendering of the fractal.  There is a script on the camera object, CameraCompute.cs, that passes variables into and dispatches the compute shader, Raymarcher.compute. Other scripts may be added to allow for user control of the parameters passed to the compute shader.
+On opening the project there are really only two scripts that will control the rendering of each scene.  There is a script on the camera object, that passes variables into and dispatches the compute shader. Other scripts may be added to allow for user control of the parameters passed to the compute shader.
 
-For those on windows 10, raywin.zip contains the application.  Unzip onto your computer and open the application inside to run.
 
 ### Other Reference Materials:
 

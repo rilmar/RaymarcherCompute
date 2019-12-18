@@ -22,6 +22,8 @@ On the projects tab in Unity Hub, go to add, then navigate to the project folder
 
 On opening the project there are really only two scripts that will control the rendering of the fractal.  There is a script on the camera object, CameraCompute.cs, that passes variables into and dispatches the compute shader, Raymarcher.compute. Other scripts may be added to allow for user control of the parameters passed to the compute shader.
 
+For those on windows 10, raywin.zip contains the application.  Unzip onto your computer and open the application inside to run.
+
 ### Other Reference Materials:
 
 Additional links:

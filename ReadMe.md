@@ -1,8 +1,8 @@
 # Graphics Term Project
 
-## 3D Mandelbulb Visualizer
+## 3D Mandelbulb Visualizer and Raymarching Demo
 
-Using ray marching, a volume rendering technique similar to raytracing, draw a 3D fractal onto the screen.  The program will be able to orbit the volume with a camera and change the color and power (complexity levels) of the fractal. The fractal drawn will be a mandelbulb and it will be drawn by taking advantage of modern graphics hardware.  Finally, the program will utilize Unity3D, a popular game engine, to handle the compilation of compute shaders to different platforms and provide some low-level matrix transformations of the camera. Instructions on using the project files will be provided.
+Using ray marching, a volume rendering technique similar to raytracing, draw a 3D fractal onto the screen.  The program will be able to orbit the volume with a camera and change the color and power (complexity levels) of the fractal. The fractal drawn will be a mandelbulb and it will be drawn by taking advantage of modern graphics hardware. The program will also act as a learning opportunity for shaders in general and will have interactive demos to better understand how they work. Finally, the program will utilize Unity3D, a popular game engine, to handle the compilation of compute shaders to different platforms and provide some low-level matrix transformations of the camera. Instructions on using the project files will be provided.
 
 ### Installation Instructions:
 

@@ -6,19 +6,45 @@ Using ray marching, a volume rendering technique similar to raytracing, draw a 3
 
 ### Installation Instructions:
 
-Install Unity Hub, if not installed.  (This helps to manage version number and install/edit the features installed in the application).
+Install Unity Hub, if not installed.  (This helps to manage version number and install/edit the features installed in the application). You will need a unity id to use this software, this can be made for free as long as you're using the personal version of Unity.
 
 https://unity3d.com/get-unity/download
 
 ![Download Unity Hub](./images/DownloadUnityHub.png)
 
-In the Installs tab of Unity Hub, add a new installation.  Install version 2019.2.12f1.  include build support for your operating system in the install. Support for other builds can be added later or now if you would like but shouldn't be needed for this particular project.
+In the Installs tab of Unity Hub, add a new installation.  You may be required to sign in at this point.
+
+![Install](./images/Installs.png)
+
+To install version 2019.2.12f1 go to legacy downloads and select the unity hub install option for the version. 
+![version select](./images/VersionSelect.png)
+
+![legacy versions](./images/VersionArchive.png)
+
+Newer versions may work but this can not be guaranteed. 
+include build support for your operating system in the install.
 
 Wait for install.
-
 Clone the Github repository.
 
-On the projects tab in Unity Hub, go to add, then navigate to the project folder on your drive (This is the folder that contains the Assets, Library, Logs, etc. folders and the sln file).  Provided you have installed unity version 2019.2.12f1 there should be no error in opening the project.
+On the projects tab in Unity Hub, go to add.
+
+![add project](./images/Projects.png)
+
+Navigate to the project folder on your drive (This is the folder that contains the Assets, Library, Logs, etc. folders and the sln file). 
+
+![folder](./images/Folder.png)
+
+Provided you have installed unity version 2019.2.12f1 there should be no error in opening the project. Click on the project name to open.
+
+To run click the play button with the starting scene open. The play button will start on whatever scene is open.  All scenes can be found in the scenes folder in the asset window.
+
+![Unity](./images/Unity.png)
+
+To Build go to File -> Build Settings -> Build.
+
+![build settings](./images/BuildSettings.png)
+
 
 ### Project Instructions:
 
